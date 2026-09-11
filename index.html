@@ -261,10 +261,34 @@
   .sheet .closex{float:right;background:none;border:none;color:var(--faint);font-size:1.3rem;cursor:pointer;line-height:1;margin:-4px -4px 0}
 
   a:focus-visible,button:focus-visible,.whoami:focus-visible,.namebtn:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+  .lockscreen{position:fixed;inset:0;z-index:100;background:var(--ground);display:grid;place-items:center;padding:20px}
+  .lockcard{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:30px 28px;width:100%;max-width:340px;text-align:center}
+  .lock-sun{width:46px;height:46px;border-radius:12px;margin:0 auto 14px;background:radial-gradient(circle at 50% 40%, var(--brand), #d68f0c);display:grid;place-items:center;color:#3a2600;font-weight:800;font-size:1.3rem;box-shadow:0 2px 10px rgba(214,143,12,.35)}
+  .lock-title{font-family:var(--font-disp);font-weight:800;font-size:1.2rem;letter-spacing:-.01em;color:var(--ink)}
+  .lock-sub{color:var(--muted);font-size:.86rem;margin:4px 0 20px}
+  .pin-input{width:100%;text-align:center;font-family:var(--font-mono);font-size:1.6rem;letter-spacing:.5em;padding:12px 10px 12px 18px;border:1px solid var(--line-strong);border-radius:12px;background:var(--ground);color:var(--ink)}
+  .pin-input:focus{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand)}
+  .pin-btn{width:100%;margin-top:12px;background:var(--brand);border:none;color:#3a2600;font-weight:700;font-family:var(--font-ui);font-size:.95rem;border-radius:12px;padding:11px;cursor:pointer}
+  .pin-btn:hover{filter:brightness(1.04)}
+  .lockerr{color:var(--busy2);font-size:.82rem;margin-top:12px}
+  .pin-input.shake{animation:shake .4s}
+  @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(3px)}30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}}
+
   @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
+<div class="lockscreen" id="lock">
+  <div class="lockcard">
+    <div class="lock-sun">☀</div>
+    <div class="lock-title">Who's In The File</div>
+    <p class="lock-sub">Enter the team PIN to open the board.</p>
+    <input id="pin" class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off" aria-label="Team PIN">
+    <button id="pinBtn" class="pin-btn">Unlock</button>
+    <div class="lockerr" id="lockerr" hidden>That PIN isn’t right. Try again.</div>
+  </div>
+</div>
 <div class="wrap">
   <header class="top">
     <div class="mark">
@@ -364,7 +388,7 @@ try{ const m=ls("wif_me"); if(m) me=JSON.parse(m); }catch(e){}
 
 /* ---------- Firebase ---------- */
 let db=null, presRef=null;
-(function initFirebase(){
+function initFirebase(){
   const cfg=window.FIREBASE_CONFIG||{};
   if(!cfg.databaseURL || String(cfg.apiKey).indexOf("PASTE")===0 || String(cfg.databaseURL).indexOf("PASTE")===0){
     configured=false; return;
@@ -405,7 +429,7 @@ let db=null, presRef=null;
       render();
     });
   }catch(e){ configured=false; renderLive(); }
-})();
+}
 
 function writePresence(){
   if(!configured || !connected || !presRef) return;
@@ -627,8 +651,36 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSheet(); });
   });
 })();
 
-/* ---------- boot ---------- */
-render();
+/* ---------- lock gate ---------- */
+function startBoard(){ initFirebase(); render(); }
+const PIN_HASH = "b914d613c73fdf0799fee7084089c159b41636d61254f83a347f2c651eb1efa0";
+const UNLOCK_KEY = "wif_unlocked_v1";
+async function sha256hex(s){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+function reveal(){ const l=$("lock"); if(l) l.hidden=true; startBoard(); }
+async function tryPin(){
+  const inp=$("pin"), err=$("lockerr");
+  const val=(inp.value||"").trim();
+  if(val.length<4) return;
+  let ok=false;
+  try{ ok = (await sha256hex(val)) === PIN_HASH; }catch(e){ ok=false; }
+  if(ok){ try{ls(UNLOCK_KEY,"1");}catch(e){} reveal(); }
+  else{ if(err) err.hidden=false; inp.value=""; inp.classList.add("shake"); setTimeout(()=>inp.classList.remove("shake"),420); inp.focus(); }
+}
+(function initLock(){
+  let unlocked=false;
+  try{ unlocked = ls(UNLOCK_KEY)==="1"; }catch(e){}
+  if(unlocked){ reveal(); return; }
+  const inp=$("pin"), btn=$("pinBtn");
+  if(btn) btn.addEventListener("click", tryPin);
+  if(inp){
+    inp.addEventListener("keydown", e=>{ if(e.key==="Enter") tryPin(); });
+    inp.addEventListener("input", ()=>{ const err=$("lockerr"); if(err) err.hidden=true; if(inp.value.length===4) tryPin(); });
+    setTimeout(()=>{ try{inp.focus();}catch(e){} }, 60);
+  }
+})();
 </script>
 </body>
 </html>
