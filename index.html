@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who's In The File</title>
+<meta name="description" content="Live check-in board for the credit cards and checks workbook.">
+
+<!-- ============================================================= -->
+<!--  SETUP STEP 1 of 1 in this file:                              -->
+<!--  Paste your Firebase project's config between the braces      -->
+<!--  below (Bryan gets this from the Firebase console). Nothing   -->
+<!--  else in this file needs to be touched.                      -->
+<!-- ============================================================= -->
+<script>
+  window.FIREBASE_CONFIG = {
+    apiKey: "AIzaSyDRfutA-xSv_eu1MaBiWU11ZInSw1UDtTk",
+    authDomain: "sunshine-collections-board.firebaseapp.com",
+    databaseURL: "https://sunshine-collections-board-default-rtdb.firebaseio.com",
+    projectId: "sunshine-collections-board",
+    storageBucket: "sunshine-collections-board.firebasestorage.app",
+    messagingSenderId: "570430733524",
+    appId: "1:570430733524:web:70c2f333c5c401fa2e0f41"
+  };
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --ground:#FAF7F1;
+    --surface:#FFFFFF;
+    --surface-2:#F3EEE4;
+    --line:#E7E0D3;
+    --line-strong:#D7CDBA;
+    --ink:#211C15;
+    --muted:#6F6656;
+    --faint:#938875;
+    --brand:#E8A317;
+    --you:#3E6FC4;
+
+    --free:#2E9E6B;      --free-bg:#E7F4EC;   --free-line:#BFE3CE;
+    --busy1:#C67C16;     --busy1-bg:#FBF0DA;  --busy1-line:#EBD199;
+    --busy2:#CF4655;     --busy2-bg:#FBE3E6;  --busy2-line:#F0BEC5;
+
+    --shadow:0 1px 2px rgba(33,28,21,.05), 0 6px 20px rgba(33,28,21,.05);
+    --radius:16px;
+    --font-disp:"Bricolage Grotesque", "Public Sans", system-ui, sans-serif;
+    --font-ui:"Public Sans", system-ui, -apple-system, sans-serif;
+    --font-mono:"IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#15110B; --surface:#1E1810; --surface-2:#271F15;
+      --line:#33291C; --line-strong:#40331F;
+      --ink:#F2ECE0; --muted:#AB9E88; --faint:#867a66;
+      --brand:#F0B740; --you:#7EA4E8;
+      --free:#54C08B;  --free-bg:#122A1D;  --free-line:#1F4632;
+      --busy1:#E6A63E; --busy1-bg:#2E230F; --busy1-line:#4A3919;
+      --busy2:#E56A79; --busy2-bg:#301419; --busy2-line:#4E2027;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 26px rgba(0,0,0,.32);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#15110B; --surface:#1E1810; --surface-2:#271F15;
+    --line:#33291C; --line-strong:#40331F;
+    --ink:#F2ECE0; --muted:#AB9E88; --faint:#867a66;
+    --brand:#F0B740; --you:#7EA4E8;
+    --free:#54C08B;  --free-bg:#122A1D;  --free-line:#1F4632;
+    --busy1:#E6A63E; --busy1-bg:#2E230F; --busy1-line:#4A3919;
+    --busy2:#E56A79; --busy2-bg:#301419; --busy2-line:#4E2027;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 26px rgba(0,0,0,.32);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:var(--font-ui);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  img{max-width:100%}
+  [hidden]{display:none!important}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+
+  header.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-bottom:16px}
+  .mark{display:flex;align-items:center;gap:11px;margin-right:auto}
+  .sun{
+    width:34px;height:34px;border-radius:9px;flex:none;
+    background:radial-gradient(circle at 50% 40%, var(--brand), #d68f0c);
+    display:grid;place-items:center;color:#3a2600;font-weight:800;
+    box-shadow:0 2px 8px rgba(214,143,12,.35);
+  }
+  .mark h1{font-family:var(--font-disp);font-weight:800;font-size:1.28rem;letter-spacing:-.02em;margin:0;line-height:1.05}
+  .mark .sub{font-size:.72rem;color:var(--muted);letter-spacing:.02em;margin-top:1px}
+
+  .live{
+    display:inline-flex;align-items:center;gap:7px;
+    font-family:var(--font-mono);font-size:.72rem;color:var(--muted);
+    background:var(--surface);border:1px solid var(--line);padding:6px 11px;border-radius:999px;
+  }
+  .live .dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+  .live.on .dot{background:var(--free);animation:pulse 2.2s infinite}
+  .live.warn .dot{background:var(--busy1)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(46,158,107,.45)}70%{box-shadow:0 0 0 7px rgba(46,158,107,0)}100%{box-shadow:0 0 0 0 rgba(46,158,107,0)}}
+
+  .icon-btn{
+    background:var(--surface);border:1px solid var(--line);color:var(--muted);
+    width:36px;height:36px;border-radius:10px;cursor:pointer;font-size:1rem;
+    display:grid;place-items:center;transition:.15s;
+  }
+  .icon-btn:hover{color:var(--ink);border-color:var(--line-strong)}
+
+  .setup-banner{
+    display:none;gap:11px;align-items:flex-start;
+    background:var(--busy1-bg);border:1px solid var(--busy1-line);color:var(--ink);
+    border-radius:14px;padding:12px 15px;margin-bottom:16px;font-size:.86rem;line-height:1.5;
+  }
+  .setup-banner.show{display:flex}
+  .setup-banner b{font-weight:700}
+
+  .idbar{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:11px 14px;box-shadow:var(--shadow);margin-bottom:18px;
+  }
+  .idbar .lead{font-size:.82rem;color:var(--muted)}
+  .whoami{
+    display:inline-flex;align-items:center;gap:9px;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:999px;padding:6px 8px 6px 12px;
+    cursor:pointer;font-weight:600;color:var(--ink);font-size:.9rem;transition:.15s;
+  }
+  .whoami:hover{border-color:var(--line-strong)}
+  .whoami .swatch{width:14px;height:14px;border-radius:50%;flex:none}
+  .whoami .caret{color:var(--faint);font-size:.7rem}
+  .idbar .hint{margin-left:auto;font-size:.76rem;color:var(--faint)}
+  .idbar .hint b{color:var(--muted);font-weight:600}
+  .cta-name{
+    border:1px dashed var(--line-strong);background:transparent;color:var(--ink);
+    border-radius:999px;padding:8px 16px;font-weight:600;cursor:pointer;font-size:.9rem;
+    font-family:var(--font-ui);transition:.15s;
+  }
+  .cta-name:hover{background:var(--surface-2);border-color:var(--brand)}
+
+  .grid{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start}
+  @media(max-width:840px){.grid{grid-template-columns:1fr}}
+
+  .board-head{display:flex;align-items:baseline;gap:10px;margin:2px 2px 12px}
+  .board-head h2{font-family:var(--font-disp);font-weight:700;font-size:1.02rem;margin:0;letter-spacing:-.01em}
+  .board-head .count{font-family:var(--font-mono);font-size:.74rem;color:var(--muted)}
+  .board-head .manage{
+    margin-left:auto;background:none;border:none;color:var(--faint);font-size:.76rem;
+    cursor:pointer;font-family:var(--font-ui);text-decoration:underline;text-underline-offset:3px;padding:2px;
+  }
+  .board-head .manage:hover{color:var(--muted)}
+
+  .nodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(226px,1fr));gap:14px}
+  .node{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:15px 15px 13px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:11px;
+    min-height:150px;position:relative;transition:border-color .18s, background .18s;
+  }
+  .node.occ1{background:var(--busy1-bg);border-color:var(--busy1-line)}
+  .node.occ2{background:var(--busy2-bg);border-color:var(--busy2-line)}
+  .node.mine{box-shadow:var(--shadow), 0 0 0 2px var(--you) inset}
+  .node .nhead{display:flex;align-items:flex-start;gap:8px}
+  .node .ntitle{font-family:var(--font-disp);font-weight:700;font-size:1.02rem;letter-spacing:-.01em;margin:0;line-height:1.15}
+  .port{width:11px;height:11px;border-radius:50%;margin-left:auto;margin-top:5px;flex:none;background:var(--free);box-shadow:0 0 0 3px var(--free-bg)}
+  .occ1 .port{background:var(--busy1);box-shadow:0 0 0 3px #fff6}
+  .occ2 .port{background:var(--busy2);box-shadow:0 0 0 3px #fff6;animation:pulse2 1.6s infinite}
+  @keyframes pulse2{0%{box-shadow:0 0 0 0 rgba(207,70,85,.5)}70%{box-shadow:0 0 0 6px rgba(207,70,85,0)}100%{box-shadow:0 0 0 0 rgba(207,70,85,0)}}
+
+  .pill{
+    align-self:flex-start;font-family:var(--font-mono);font-size:.66rem;font-weight:600;
+    letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;
+    background:var(--free-bg);color:var(--free);border:1px solid var(--free-line);
+  }
+  .occ1 .pill{background:#fff8;color:var(--busy1);border-color:var(--busy1-line)}
+  .occ2 .pill{background:#fff8;color:var(--busy2);border-color:var(--busy2-line)}
+  :root[data-theme="dark"] .occ1 .pill, :root[data-theme="dark"] .occ2 .pill{background:#0004}
+  @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .occ1 .pill,:root:not([data-theme="light"]) .occ2 .pill{background:#0004}}
+
+  .occupants{display:flex;flex-direction:column;gap:6px;flex:1}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;font-size:.86rem;font-weight:500;
+    background:var(--surface);border:1px solid var(--line);border-radius:999px;
+    padding:4px 10px 4px 6px;align-self:flex-start;max-width:100%;
+  }
+  .chip .swatch{width:15px;height:15px;border-radius:50%;flex:none}
+  .chip .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip .ago{font-family:var(--font-mono);font-size:.7rem;color:var(--muted);flex:none}
+  .chip.me{border-color:var(--you);box-shadow:0 0 0 1px var(--you)}
+  .chip.away{opacity:.5}
+  .chip .awaytag{font-size:.66rem;color:var(--faint);font-style:italic}
+  .empty-slot{font-size:.82rem;color:var(--faint);font-style:italic;padding:2px 0}
+
+  .node .act{
+    border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);
+    font-family:var(--font-ui);font-weight:600;font-size:.84rem;cursor:pointer;
+    border-radius:10px;padding:8px 10px;transition:.15s;width:100%;
+  }
+  .node .act:hover{border-color:var(--brand);background:var(--surface-2)}
+  .node .act.in{background:var(--you);border-color:var(--you);color:#fff}
+  .node .act.in:hover{filter:brightness(1.06)}
+
+  .rm{position:absolute;top:9px;right:9px;width:24px;height:24px;border-radius:7px;
+    border:1px solid var(--busy2-line);background:var(--busy2-bg);color:var(--busy2);
+    cursor:pointer;font-size:.85rem;line-height:1;display:none;place-items:center}
+  .managing .rm{display:grid}
+  .managing .port{display:none}
+  .node .lblinput{width:100%;font-family:var(--font-disp);font-weight:700;font-size:1rem;
+    border:1px solid var(--line-strong);border-radius:8px;padding:5px 8px;background:var(--surface);color:var(--ink)}
+
+  .addnode{
+    border:1.5px dashed var(--line-strong);background:transparent;border-radius:var(--radius);
+    min-height:150px;display:none;flex-direction:column;gap:9px;justify-content:center;align-items:center;padding:15px;color:var(--muted);
+  }
+  .managing .addnode{display:flex}
+  .addnode input{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--surface);color:var(--ink);font-family:var(--font-ui);font-size:.88rem}
+  .addnode button{width:100%;background:var(--brand);border:none;color:#3a2600;font-weight:700;border-radius:9px;padding:8px;cursor:pointer;font-family:var(--font-ui);font-size:.85rem}
+
+  .rail{display:flex;flex-direction:column;gap:16px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px;box-shadow:var(--shadow)}
+  .card h3{font-family:var(--font-disp);font-weight:700;font-size:.82rem;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);margin:0 0 11px}
+  .avail{display:flex;flex-wrap:wrap;gap:7px}
+  .avail .none{font-size:.83rem;color:var(--faint);font-style:italic}
+
+  .feed{display:flex;flex-direction:column;gap:9px;max-height:340px;overflow-y:auto}
+  .feed .row{display:flex;gap:9px;font-size:.83rem;line-height:1.35}
+  .feed .fdot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none;background:var(--faint)}
+  .feed .row.enter .fdot{background:var(--busy1)}
+  .feed .row.leave .fdot{background:var(--free)}
+  .feed .row .ft{color:var(--ink)}
+  .feed .row .ft b{font-weight:600}
+  .feed .row .fw{font-family:var(--font-mono);font-size:.68rem;color:var(--faint);margin-left:auto;flex:none;white-space:nowrap}
+  .feed .quiet{font-size:.83rem;color:var(--faint);font-style:italic}
+
+  .note{margin-top:22px;font-size:.78rem;color:var(--faint);line-height:1.55;display:flex;gap:9px;align-items:flex-start;max-width:640px}
+  .note svg{flex:none;margin-top:2px}
+
+  .scrim{position:fixed;inset:0;background:rgba(20,16,10,.44);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .scrim.open{display:flex}
+  .sheet{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,.28);width:100%;max-width:440px;padding:22px;max-height:88vh;overflow-y:auto}
+  .sheet h2{font-family:var(--font-disp);font-weight:800;font-size:1.2rem;margin:0 0 4px;letter-spacing:-.01em}
+  .sheet p{margin:0 0 16px;color:var(--muted);font-size:.86rem}
+  .names{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:18px}
+  .namebtn{display:inline-flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:8px 14px 8px 10px;cursor:pointer;font-family:var(--font-ui);font-weight:600;font-size:.92rem;color:var(--ink);transition:.15s}
+  .namebtn:hover{border-color:var(--brand);transform:translateY(-1px)}
+  .namebtn .swatch{width:16px;height:16px;border-radius:50%;flex:none}
+  .namebtn.current{border-color:var(--you);box-shadow:0 0 0 1px var(--you)}
+  .addwrap{border-top:1px solid var(--line);padding-top:16px}
+  .addwrap label{font-size:.78rem;color:var(--muted);font-weight:600;display:block;margin-bottom:7px}
+  .addrow{display:flex;gap:8px}
+  .addrow input{flex:1;border:1px solid var(--line-strong);border-radius:10px;padding:9px 12px;background:var(--ground);color:var(--ink);font-family:var(--font-ui);font-size:.92rem}
+  .addrow input:focus{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand)}
+  .addrow button{background:var(--brand);border:none;color:#3a2600;font-weight:700;border-radius:10px;padding:9px 16px;cursor:pointer;font-family:var(--font-ui);font-size:.9rem}
+  .sheet .signout{margin-top:16px;background:none;border:none;color:var(--busy2);font-size:.82rem;cursor:pointer;font-family:var(--font-ui);text-decoration:underline;text-underline-offset:3px;padding:2px}
+  .sheet .closex{float:right;background:none;border:none;color:var(--faint);font-size:1.3rem;cursor:pointer;line-height:1;margin:-4px -4px 0}
+
+  a:focus-visible,button:focus-visible,.whoami:focus-visible,.namebtn:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="mark">
+      <div class="sun">☀</div>
+      <div>
+        <h1>Who's In The File</h1>
+        <div class="sub">Credit cards &amp; checks workbook &middot; live board</div>
+      </div>
+    </div>
+    <div id="live" class="live"><span class="dot"></span><span id="liveTxt">starting&hellip;</span></div>
+    <button class="icon-btn" id="themeBtn" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
+  </header>
+
+  <div class="setup-banner" id="setupBanner">
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 1.5 1.5 13h13L8 1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 6.4v3.2M8 11.4h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    <span><b>Not connected yet.</b> This board isn't linked to its live database, so it only shows on this screen. Once the one-time Firebase setup is pasted in, it goes live for everyone automatically.</span>
+  </div>
+
+  <div class="idbar" id="idbar"></div>
+
+  <div class="grid">
+    <section>
+      <div class="board-head">
+        <h2>The workbook</h2>
+        <span class="count" id="areaCount"></span>
+        <button class="manage" id="manageBtn">Manage areas</button>
+      </div>
+      <div class="nodes" id="nodes"></div>
+    </section>
+
+    <aside class="rail">
+      <div class="card">
+        <h3>On the board</h3>
+        <div class="avail" id="avail"></div>
+      </div>
+      <div class="card">
+        <h3>Live activity</h3>
+        <div class="feed" id="feed"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="note">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="var(--faint)" stroke-width="1.3"/><path d="M8 7.2v4M8 4.8h.01" stroke="var(--faint)" stroke-width="1.4" stroke-linecap="round"/></svg>
+    <span>This board doesn't read the spreadsheet or lock anything &mdash; it's a shared check-in sign. Tap into an area when you start working in it, and tap out when you're done. Closing the tab clears you automatically.</span>
+  </div>
+</div>
+
+<div class="scrim" id="scrim">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <button class="closex" id="sheetClose" aria-label="Close">&times;</button>
+    <h2 id="sheetTitle">Who are you?</h2>
+    <p>Tap your name to start showing up on the board. It's remembered on this device.</p>
+    <div class="names" id="names"></div>
+    <div class="addwrap">
+      <label for="newName">Not on the list? Add yourself or a teammate</label>
+      <div class="addrow">
+        <input id="newName" type="text" placeholder="First name or initials" maxlength="24" autocomplete="off">
+        <button id="addBtn">Add</button>
+      </div>
+    </div>
+    <button class="signout" id="signOut" hidden>Sign out of this device</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, set, update, remove, onDisconnect }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* ---------- constants & helpers ---------- */
+const PALETTE = ["#E07A5F","#3D9970","#4F86C6","#C7548A","#D89A1E","#7A5FE0","#2AA79B","#B5651D","#6B8E23","#CF4655","#5B8DD9","#A65FB0"];
+const DEFAULT_SECTIONS = [
+  {id:"collections",  label:"Collections",  order:1},
+  {id:"credit-cards", label:"Credit Cards", order:2},
+  {id:"checks",       label:"Checks",       order:3}
+];
+const IDLE_MS = 5*60*1000;
+const AUTO_OUT_MS = 20*60*1000;
+const STALE_MS = 90*1000;
+
+const $ = id => document.getElementById(id);
+const slug = s => (s||"").trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"x";
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return v===undefined?null:undefined;}}
+function ago(ts){ if(!ts)return ""; const m=Math.floor((Date.now()-ts)/60000); if(m<1)return"just now"; if(m<60)return"in "+m+"m"; const h=Math.floor(m/60); return "in "+h+"h"+(m%60?(" "+(m%60)+"m"):""); }
+function feedWhen(ts){ const s=Math.floor((Date.now()-ts)/1000); if(s<10)return"now"; if(s<60)return s+"s"; const m=Math.floor(s/60); if(m<60)return m+"m"; return Math.floor(m/60)+"h"; }
+
+/* ---------- state ---------- */
+let me=null, mySection=null, mySince=null, idle=false, lastActive=Date.now();
+let sections=DEFAULT_SECTIONS.slice(), roster=[], peers=[], managing=false;
+let connected=false, configured=false, seededOnce=false;
+let feed=[], prevState={};
+const clientId = (crypto.randomUUID ? crypto.randomUUID() : "c"+Math.random().toString(36).slice(2)+Date.now());
+
+try{ const m=ls("wif_me"); if(m) me=JSON.parse(m); }catch(e){}
+
+/* ---------- Firebase ---------- */
+let db=null, presRef=null;
+(function initFirebase(){
+  const cfg=window.FIREBASE_CONFIG||{};
+  if(!cfg.databaseURL || String(cfg.apiKey).indexOf("PASTE")===0 || String(cfg.databaseURL).indexOf("PASTE")===0){
+    configured=false; return;
+  }
+  try{
+    const app=initializeApp(cfg);
+    db=getDatabase(app);
+    configured=true;
+    presRef=ref(db,"presence/"+clientId);
+
+    onValue(ref(db,".info/connected"), snap=>{
+      connected = snap.val()===true;
+      if(connected && presRef){ onDisconnect(presRef).remove(); writePresence(); }
+      renderLive();
+    });
+    onValue(ref(db,"sections"), snap=>{
+      const val=snap.val();
+      if(val && Object.keys(val).length){
+        sections=Object.keys(val).map(id=>({id, label:val[id].label||id, order:val[id].order||0}));
+      } else {
+        sections=DEFAULT_SECTIONS.slice();
+        if(!seededOnce){ seededOnce=true; DEFAULT_SECTIONS.forEach(s=>set(ref(db,"sections/"+s.id),{label:s.label,order:s.order,createdAt:Date.now()})); }
+      }
+      render();
+    });
+    onValue(ref(db,"roster"), snap=>{
+      const val=snap.val()||{};
+      roster=Object.keys(val).map(k=>({name:val[k].name||k, color:val[k].color||"#999"}));
+      renderNames();
+    });
+    onValue(ref(db,"presence"), snap=>{
+      const val=snap.val()||{};
+      peers=Object.keys(val).map(id=>{
+        const p=val[id]||{};
+        return {peer:id, isMe:id===clientId, name:p.name||null, color:p.color||"#999", section:p.section||null, since:p.since||null, active:p.active!==false, lastActive:p.lastActive||0};
+      }).filter(p=> p.isMe || !p.lastActive || (Date.now()-p.lastActive) < STALE_MS );
+      diffFeed();
+      render();
+    });
+  }catch(e){ configured=false; renderLive(); }
+})();
+
+function writePresence(){
+  if(!configured || !connected || !presRef) return;
+  set(presRef, {
+    name: me? me.name : null,
+    color: me? me.color : null,
+    section: mySection || null,
+    since: mySection? mySince : null,
+    active: !idle,
+    lastActive: Date.now()
+  });
+}
+
+/* ---------- derive named peers ---------- */
+function namedPeers(){
+  return peers.filter(p=>p.name).map(p=>({peer:p.peer, isMe:p.isMe, name:p.name, color:p.color, section:p.section, since:p.since, active:p.active}));
+}
+function sectionLabel(id){ const s=sections.find(x=>x.id===id); return s?s.label:id; }
+
+/* ---------- render ---------- */
+function render(){ renderLive(); renderIdBar(); renderNodes(); renderRail(); }
+
+function renderLive(){
+  const el=$("live"), t=$("liveTxt");
+  $("setupBanner").classList.toggle("show", !configured);
+  if(!configured){ el.className="live warn"; t.textContent="offline — setup needed"; return; }
+  if(!connected){ el.className="live"; t.textContent="connecting…"; return; }
+  const n=namedPeers().length;
+  el.className="live on";
+  t.textContent = n===0 ? "nobody working now" : (n+" on the board now");
+}
+
+function renderIdBar(){
+  const bar=$("idbar");
+  if(me){
+    bar.innerHTML =
+      '<span class="lead">You’re on as</span>'+
+      '<button class="whoami" data-act="identity"><span class="swatch" style="background:'+esc(me.color)+'"></span>'+esc(me.name)+' <span class="caret">▾</span></button>'+
+      '<span class="hint">Tap an area below to check in. '+(mySection?'<b>You’re checked into '+esc(sectionLabel(mySection))+'.</b>':'You’re not in any area yet.')+'</span>';
+  } else {
+    bar.innerHTML =
+      '<span class="lead">Before you open the file&hellip;</span>'+
+      '<button class="cta-name" data-act="identity">👋 Tap your name to start</button>'+
+      '<span class="hint">You can watch the board without picking a name.</span>';
+  }
+}
+
+function renderNodes(){
+  const host=$("nodes");
+  host.className="nodes"+(managing?" managing":"");
+  $("areaCount").textContent = sections.length+" area"+(sections.length===1?"":"s");
+  const np=namedPeers();
+  const sorted=sections.slice().sort((a,b)=>(a.order||0)-(b.order||0));
+  let html="";
+  for(const sec of sorted){
+    const occ=np.filter(p=>p.section===sec.id);
+    const cls = occ.length>=2 ? "occ2" : (occ.length===1 ? "occ1" : "");
+    const mineHere = occ.some(p=>p.isMe);
+    const pillTxt = occ.length===0 ? "Free" : (occ.length===1 ? "In use" : occ.length+" people — heads up");
+    let chips="";
+    if(occ.length===0){ chips='<div class="empty-slot">Nobody here</div>'; }
+    else{
+      occ.sort((a,b)=>(a.since||0)-(b.since||0));
+      for(const o of occ){
+        chips+='<span class="chip'+(o.isMe?" me":"")+(o.active?"":" away")+'">'+
+          '<span class="swatch" style="background:'+esc(o.color)+'"></span>'+
+          '<span class="nm">'+esc(o.name)+(o.isMe?" (you)":"")+'</span>'+
+          (o.active?'<span class="ago">'+ago(o.since)+'</span>':'<span class="awaytag">away</span>')+'</span>';
+      }
+    }
+    const titleEl = managing
+      ? '<input class="lblinput" data-act="rename" data-id="'+esc(sec.id)+'" value="'+esc(sec.label)+'" maxlength="28">'
+      : '<h4 class="ntitle">'+esc(sec.label)+'</h4>';
+    const btn = me
+      ? '<button class="act'+(mineHere?" in":"")+'" data-act="toggle" data-id="'+esc(sec.id)+'">'+(mineHere?"✓ You’re here — tap out":"I’m working here")+'</button>'
+      : '<button class="act" data-act="identity">Pick your name to check in</button>';
+    html+=
+      '<div class="node '+cls+(mineHere?" mine":"")+'">'+
+        '<button class="rm" data-act="remove" data-id="'+esc(sec.id)+'" title="Remove area" aria-label="Remove area">✕</button>'+
+        '<div class="nhead">'+titleEl+'<span class="port"></span></div>'+
+        '<span class="pill">'+esc(pillTxt)+'</span>'+
+        '<div class="occupants">'+chips+'</div>'+
+        (managing?"":btn)+
+      '</div>';
+  }
+  html+='<div class="addnode"><input id="newSection" type="text" placeholder="New area name" maxlength="28" autocomplete="off"><button data-act="addsection">Add area</button></div>';
+  host.innerHTML=html;
+}
+
+function renderRail(){
+  const np=namedPeers();
+  const avail=$("avail");
+  const free=np.filter(p=>!p.section);
+  if(free.length===0){
+    avail.innerHTML='<span class="none">'+(np.length?"Everyone’s in an area right now.":"No one’s here yet.")+'</span>';
+  }else{
+    avail.innerHTML=free.map(o=>'<span class="chip'+(o.isMe?" me":"")+(o.active?"":" away")+'"><span class="swatch" style="background:'+esc(o.color)+'"></span><span class="nm">'+esc(o.name)+(o.isMe?" (you)":"")+'</span>'+(o.active?"":'<span class="awaytag">away</span>')+'</span>').join("");
+  }
+  const f=$("feed");
+  if(feed.length===0){ f.innerHTML='<span class="quiet">Nothing yet. Check-ins will show up here.</span>'; }
+  else{ f.innerHTML=feed.slice(0,10).map(e=>'<div class="row '+e.kind+'"><span class="fdot"></span><span class="ft">'+e.html+'</span><span class="fw">'+feedWhen(e.t)+'</span></div>').join(""); }
+}
+
+function pushFeed(kind,html){ feed.unshift({kind,html,t:Date.now()}); if(feed.length>24)feed.length=24; }
+
+function diffFeed(){
+  const cur={};
+  for(const p of peers){ if(p.name) cur[p.peer]={name:p.name, section:p.section, isMe:p.isMe}; }
+  for(const key in cur){
+    const now=cur[key], was=prevState[key];
+    const who=now.isMe?"You":"<b>"+esc(now.name)+"</b>";
+    if(!was){ if(now.section) pushFeed("enter", who+" checked into <b>"+esc(sectionLabel(now.section))+"</b>"); }
+    else if(was.section!==now.section){
+      if(now.section && was.section) pushFeed("enter", who+" moved to <b>"+esc(sectionLabel(now.section))+"</b>");
+      else if(now.section) pushFeed("enter", who+" checked into <b>"+esc(sectionLabel(now.section))+"</b>");
+      else if(was.section) pushFeed("leave", who+" left <b>"+esc(sectionLabel(was.section))+"</b>");
+    }
+  }
+  for(const k in prevState){ if(!cur[k] && prevState[k].section) pushFeed("leave", "<b>"+esc(prevState[k].name)+"</b> left <b>"+esc(sectionLabel(prevState[k].section))+"</b>"); }
+  prevState=cur;
+}
+
+/* ---------- colors ---------- */
+function nextColor(){
+  const used={}; roster.forEach(r=>used[r.color]=1); if(me)used[me.color]=1;
+  for(const c of PALETTE) if(!used[c]) return c;
+  return PALETTE[roster.length%PALETTE.length];
+}
+
+/* ---------- identity ---------- */
+function openSheet(){ renderNames(); $("signOut").hidden=!me; $("scrim").classList.add("open"); setTimeout(()=>{const n=$("newName"); if(n)n.focus();},30); }
+function closeSheet(){ $("scrim").classList.remove("open"); }
+function renderNames(){
+  const host=$("names");
+  if(roster.length===0){ host.innerHTML='<span style="color:var(--faint);font-size:.85rem;font-style:italic">No names yet — add the first one below.</span>'; return; }
+  host.innerHTML=roster.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(r=>{
+    const cur=me&&me.name===r.name;
+    return '<button class="namebtn'+(cur?" current":"")+'" data-act="pick" data-name="'+esc(r.name)+'" data-color="'+esc(r.color)+'"><span class="swatch" style="background:'+esc(r.color)+'"></span>'+esc(r.name)+'</button>';
+  }).join("");
+}
+function pickMe(name,color){ me={name,color}; try{ls("wif_me",JSON.stringify(me));}catch(e){} lastActive=Date.now(); idle=false; writePresence(); closeSheet(); render(); }
+function addTeammate(name){
+  name=(name||"").trim(); if(!name)return;
+  const exists=roster.find(r=>r.name.toLowerCase()===name.toLowerCase());
+  const color=exists?exists.color:nextColor();
+  if(!exists){ if(configured&&db) set(ref(db,"roster/"+slug(name)),{name,color,createdAt:Date.now()}); else roster.push({name,color}); }
+  pickMe(name,color);
+}
+function signOut(){ if(mySection)mySection=null; me=null; try{localStorage.removeItem("wif_me");}catch(e){} writePresence(); closeSheet(); render(); }
+
+/* ---------- sections ---------- */
+function addSection(label){
+  label=(label||"").trim(); if(!label)return;
+  let id=slug(label), base=id, n=2; while(sections.some(s=>s.id===id)) id=base+"-"+(n++);
+  const order=sections.reduce((mx,s)=>Math.max(mx,s.order||0),0)+1;
+  if(configured&&db) set(ref(db,"sections/"+id),{label,order,createdAt:Date.now()});
+  else { sections.push({id,label,order}); render(); }
+}
+function removeSection(id){
+  if(configured&&db) remove(ref(db,"sections/"+id));
+  else { sections=sections.filter(s=>s.id!==id); render(); }
+  if(mySection===id){ mySection=null; writePresence(); }
+}
+function renameSection(id,label){
+  label=(label||"").trim(); if(!label)return;
+  if(configured&&db) update(ref(db,"sections/"+id),{label});
+  else { const s=sections.find(x=>x.id===id); if(s)s.label=label; }
+}
+
+/* ---------- check in / out ---------- */
+function toggleSection(id){
+  if(!me){ openSheet(); return; }
+  if(mySection===id){ mySection=null; mySince=null; } else { mySection=id; mySince=Date.now(); }
+  lastActive=Date.now(); idle=false; writePresence(); render();
+}
+
+/* ---------- idle watch ---------- */
+function bumpActive(){ lastActive=Date.now(); if(idle){ idle=false; writePresence(); render(); } }
+["pointerdown","keydown","touchstart"].forEach(ev=>window.addEventListener(ev,bumpActive,{passive:true}));
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) bumpActive(); });
+setInterval(()=>{
+  const idleMs=Date.now()-lastActive;
+  const shouldIdle=document.hidden||idleMs>IDLE_MS;
+  if(shouldIdle!==idle){ idle=shouldIdle; writePresence(); }
+  else if(configured&&connected&&me){ writePresence(); } // heartbeat
+  if(mySection&&idleMs>AUTO_OUT_MS){ mySection=null; mySince=null; writePresence(); }
+  render();
+},20000);
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-act]"); if(!t)return;
+  const act=t.getAttribute("data-act"), id=t.getAttribute("data-id");
+  if(act==="identity") openSheet();
+  else if(act==="pick") pickMe(t.getAttribute("data-name"),t.getAttribute("data-color"));
+  else if(act==="toggle") toggleSection(id);
+  else if(act==="addsection"){ const v=$("newSection"); addSection(v.value); v.value=""; }
+  else if(act==="remove") removeSection(id);
+});
+document.addEventListener("change",e=>{
+  const t=e.target.closest("[data-act='rename']"); if(!t)return;
+  renameSection(t.getAttribute("data-id"),t.value);
+});
+$("manageBtn").addEventListener("click",function(){ managing=!managing; this.textContent=managing?"Done":"Manage areas"; renderNodes(); });
+$("scrim").addEventListener("click",function(e){ if(e.target===this) closeSheet(); });
+$("sheetClose").addEventListener("click",closeSheet);
+$("signOut").addEventListener("click",signOut);
+$("addBtn").addEventListener("click",()=>{ const v=$("newName"); addTeammate(v.value); v.value=""; });
+$("newName").addEventListener("keydown",e=>{ if(e.key==="Enter"){ addTeammate(e.target.value); e.target.value=""; } });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSheet(); });
+
+/* ---------- theme ---------- */
+(function(){
+  const saved=ls("wif_theme"); if(saved) document.documentElement.setAttribute("data-theme",saved);
+  $("themeBtn").addEventListener("click",()=>{
+    const cur=document.documentElement.getAttribute("data-theme");
+    const next=cur==="dark"?"light":(cur==="light"?"dark":(matchMedia("(prefers-color-scheme: dark)").matches?"light":"dark"));
+    document.documentElement.setAttribute("data-theme",next); ls("wif_theme",next);
+  });
+})();
+
+/* ---------- boot ---------- */
+render();
+</script>
+</body>
+</html>
